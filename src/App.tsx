@@ -14,7 +14,6 @@ import Sellers from "./pages/Sellers";
 import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,7 +42,6 @@ const AppContent = () => {
               <Route path="/users" element={<Users />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/analytics" element={<Analytics />} />
-              <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

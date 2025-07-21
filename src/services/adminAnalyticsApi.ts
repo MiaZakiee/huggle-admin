@@ -129,10 +129,10 @@ export const AdminAnalyticsApi = {
   },
 
   // Get platform overview analytics
-  getPlatformOverview: async (timeRange: TimeRange): Promise<PlatformOverviewResponse> => {
+  async getPlatformOverview(timeRange: TimeRange = '1month'): Promise<PlatformOverviewResponse> {
     try {
       const response = await api.get('/api/admin/analytics/platform/overview', {
-        params: { timeRange }
+        params: { timeRange },
       });
       return response.data;
     } catch (error) {
@@ -142,7 +142,7 @@ export const AdminAnalyticsApi = {
   },
 
   // Get current platform analytics
-  getCurrentPlatformAnalytics: async (): Promise<SecurePlatformAnalyticsSummary> => {
+  async getCurrentPlatformAnalytics(): Promise<SecurePlatformAnalyticsSummary> {
     try {
       const response = await api.get('/api/admin/analytics/platform/current');
       return response.data;
@@ -153,7 +153,7 @@ export const AdminAnalyticsApi = {
   },
 
   // Get platform analytics for specific month
-  getPlatformMonthlyAnalytics: async (monthsAgo: number): Promise<SecurePlatformAnalyticsSummary> => {
+  async getPlatformMonthlyAnalytics(monthsAgo: number): Promise<SecurePlatformAnalyticsSummary> {
     try {
       const response = await api.get(`/api/admin/analytics/platform/monthly/${monthsAgo}`);
       return response.data;
@@ -164,7 +164,7 @@ export const AdminAnalyticsApi = {
   },
 
   // Get platform analytics summary over multiple months
-  getPlatformAnalyticsSummary: async (monthsCount: number) => {
+  async getPlatformAnalyticsSummary(monthsCount: number) {
     try {
       const response = await api.get(`/api/admin/analytics/platform/summary/${monthsCount}`);
       return response.data;
@@ -175,7 +175,7 @@ export const AdminAnalyticsApi = {
   },
 
   // Get top performing stores
-  getTopStores: async (monthsAgo: number = 0, limit: number = 10, sortBy: string = 'engagementScore'): Promise<SecureStorePerformance[]> => {
+  async getTopStores(monthsAgo: number = 0, limit: number = 10, sortBy: string = 'engagementScore'): Promise<SecureStorePerformance[]> {
     try {
       const response = await api.get('/api/admin/analytics/platform/top-stores', {
         params: {
@@ -184,7 +184,7 @@ export const AdminAnalyticsApi = {
           sortBy,
         },
       });
-      return response.data.topStores || [];
+      return response.data.topStores || response.data;
     } catch (error) {
       console.error('Error fetching top stores:', error);
       return [];

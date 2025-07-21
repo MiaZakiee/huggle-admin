@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,69 +43,110 @@ import {
   Image,
   FileText,
 } from "lucide-react";
-import { mockReports, ContentReport } from "@/lib/mock-data";
+import { adminReportsApi, Report, ReportStatus } from "@/services/adminReportsApi";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
-  const [reports] = useState<ContentReport[]>(mockReports);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedReport, setSelectedReport] = useState<ContentReport | null>(null);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
-    type: 'resolve' | 'dismiss' | 'remove' | null;
-    report: ContentReport | null;
+    type: 'reviewed' | 'resolved' | 'dismissed' | null;
+    report: Report | null;
   }>({ open: false, type: null, report: null });
   const [actionNotes, setActionNotes] = useState("");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const fetchedReports = await adminReportsApi.getAllReports();
+      setReports(fetchedReports);
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch reports. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredReports = reports.filter(report =>
-    report.reportedContent.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.reportedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.reason.toLowerCase().includes(searchTerm.toLowerCase())
+    report.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.reporterId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.targetId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: ContentReport['status']) => {
-    const statusConfig = {
-      open: { variant: "destructive" as const, label: "Open" },
-      'in-review': { variant: "secondary" as const, label: "In Review" },
-      resolved: { variant: "default" as const, label: "Resolved" },
-      dismissed: { variant: "outline" as const, label: "Dismissed" },
-    };
-    
-    const config = statusConfig[status];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+  const getStatusBadge = (status: ReportStatus) => {
+    const variant = adminReportsApi.getStatusVariant(status);
+    const label = adminReportsApi.getStatusLabel(status);
+    return <Badge variant={variant}>{label}</Badge>;
   };
 
-  const getContentTypeBadge = (type: ContentReport['reportedContent']['type']) => {
-    const typeConfig = {
-      product: { variant: "outline" as const, label: "Product", icon: Store },
-      post: { variant: "secondary" as const, label: "Post", icon: Image },
-    };
-    
-    const config = typeConfig[type];
-    const Icon = config.icon;
-    return (
-      <Badge variant={config.variant} className="flex items-center space-x-1">
-        <Icon className="h-3 w-3" />
-        <span>{config.label}</span>
-      </Badge>
-    );
-  };
+  // Filter reports by status
+  const pendingReports = filteredReports.filter(r => r.status === ReportStatus.Pending);
+  const reviewedReports = filteredReports.filter(r => r.status === ReportStatus.Reviewed);
+  const resolvedReports = filteredReports.filter(r => r.status === ReportStatus.Resolved);
+  const dismissedReports = filteredReports.filter(r => r.status === ReportStatus.Dismissed);
 
-  const openReports = filteredReports.filter(r => r.status === 'open');
-  const inReviewReports = filteredReports.filter(r => r.status === 'in-review');
-  const resolvedReports = filteredReports.filter(r => r.status === 'resolved');
-  const dismissedReports = filteredReports.filter(r => r.status === 'dismissed');
-
-  const handleReportAction = (action: 'resolve' | 'dismiss' | 'remove', report: ContentReport) => {
+  const handleReportAction = (action: 'reviewed' | 'resolved' | 'dismissed', report: Report) => {
     setActionDialog({ open: true, type: action, report });
     setActionNotes("");
   };
 
-  const confirmAction = () => {
-    // Here you would call the API to perform the action
-    console.log(`${actionDialog.type} report:`, actionDialog.report?.id, actionNotes);
-    setActionDialog({ open: false, type: null, report: null });
-    setActionNotes("");
+  const confirmAction = async () => {
+    if (!actionDialog.report || !actionDialog.type) return;
+
+    try {
+      let newStatus: ReportStatus;
+      switch (actionDialog.type) {
+        case 'reviewed':
+          newStatus = ReportStatus.Reviewed;
+          break;
+        case 'resolved':
+          newStatus = ReportStatus.Resolved;
+          break;
+        case 'dismissed':
+          newStatus = ReportStatus.Dismissed;
+          break;
+        default:
+          return;
+      }
+
+      await adminReportsApi.updateReportStatus(actionDialog.report.id, newStatus);
+      
+      // Update the local state
+      setReports(prev => prev.map(report => 
+        report.id === actionDialog.report?.id 
+          ? { ...report, status: newStatus }
+          : report
+      ));
+
+      toast({
+        title: "Success",
+        description: `Report ${actionDialog.type} successfully.`,
+      });
+
+      setActionDialog({ open: false, type: null, report: null });
+      setActionNotes("");
+    } catch (error) {
+      console.error('Error updating report status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update report status. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -121,7 +162,7 @@ export default function Reports() {
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="destructive" className="px-3 py-1">
-            {openReports.length} Open Reports
+            {pendingReports.length} Pending Reports
           </Badge>
         </div>
       </div>
@@ -132,7 +173,7 @@ export default function Reports() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search reports by content, reporter, seller, or reason..."
+              placeholder="Search reports by reason, description, reporter, or target..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -142,13 +183,13 @@ export default function Reports() {
       </Card>
 
       {/* Reports Tabs */}
-      <Tabs defaultValue="open" className="space-y-4">
+      <Tabs defaultValue="pending" className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="open">
-            Open ({openReports.length})
+          <TabsTrigger value="pending">
+            Pending ({pendingReports.length})
           </TabsTrigger>
-          <TabsTrigger value="in-review">
-            In Review ({inReviewReports.length})
+          <TabsTrigger value="reviewed">
+            Reviewed ({reviewedReports.length})
           </TabsTrigger>
           <TabsTrigger value="resolved">
             Resolved ({resolvedReports.length})
@@ -161,18 +202,20 @@ export default function Reports() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="open">
+        <TabsContent value="pending">
           <ReportsTable 
-            reports={openReports} 
+            reports={pendingReports} 
+            loading={loading}
             onViewReport={setSelectedReport}
             onReportAction={handleReportAction}
             showActions={true}
           />
         </TabsContent>
 
-        <TabsContent value="in-review">
+        <TabsContent value="reviewed">
           <ReportsTable 
-            reports={inReviewReports} 
+            reports={reviewedReports} 
+            loading={loading}
             onViewReport={setSelectedReport}
             onReportAction={handleReportAction}
             showActions={true}
@@ -182,6 +225,7 @@ export default function Reports() {
         <TabsContent value="resolved">
           <ReportsTable 
             reports={resolvedReports} 
+            loading={loading}
             onViewReport={setSelectedReport}
             onReportAction={handleReportAction}
             showActions={false}
@@ -191,6 +235,7 @@ export default function Reports() {
         <TabsContent value="dismissed">
           <ReportsTable 
             reports={dismissedReports} 
+            loading={loading}
             onViewReport={setSelectedReport}
             onReportAction={handleReportAction}
             showActions={false}
@@ -200,6 +245,7 @@ export default function Reports() {
         <TabsContent value="all">
           <ReportsTable 
             reports={filteredReports} 
+            loading={loading}
             onViewReport={setSelectedReport}
             onReportAction={handleReportAction}
             showActions={false}
@@ -232,17 +278,17 @@ export default function Reports() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Reported By</label>
+                        <label className="text-sm font-medium text-muted-foreground">Reporter ID</label>
                         <p className="flex items-center space-x-1">
                           <User className="h-4 w-4" />
-                          <span>{selectedReport.reportedBy}</span>
+                          <span className="font-mono text-sm">{selectedReport.reporterId}</span>
                         </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Report Date</label>
                         <p className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4" />
-                          <span>{new Date(selectedReport.reportDate).toLocaleDateString()}</span>
+                          <span>{new Date(selectedReport.createdAt).toLocaleDateString()}</span>
                         </p>
                       </div>
                       <div>
@@ -250,10 +296,10 @@ export default function Reports() {
                         <p className="font-medium">{selectedReport.reason}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Seller</label>
+                        <label className="text-sm font-medium text-muted-foreground">Target ID</label>
                         <p className="flex items-center space-x-1">
                           <Store className="h-4 w-4" />
-                          <span>{selectedReport.seller}</span>
+                          <span className="font-mono text-sm">{selectedReport.targetId}</span>
                         </p>
                       </div>
                       <div>
@@ -266,45 +312,25 @@ export default function Reports() {
                   </Card>
                 </div>
 
-                {/* Reported Content */}
+                {/* Report Description */}
                 <div className="space-y-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center space-x-2">
-                        <span>Reported Content</span>
-                        {getContentTypeBadge(selectedReport.reportedContent.type)}
+                        <FileText className="h-5 w-5" />
+                        <span>Report Description</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Title</label>
-                        <p className="font-medium">{selectedReport.reportedContent.title}</p>
-                      </div>
-                      <div>
                         <label className="text-sm font-medium text-muted-foreground">Description</label>
-                        <p className="text-sm">{selectedReport.reportedContent.description}</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedReport.description}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Content ID</label>
+                        <label className="text-sm font-medium text-muted-foreground">Report ID</label>
                         <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                          {selectedReport.reportedContent.id}
+                          {selectedReport.id}
                         </p>
-                      </div>
-                      
-                      {/* Mock content preview */}
-                      <div className="border border-border rounded-lg p-3 bg-muted/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Content Preview</span>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Full
-                          </Button>
-                        </div>
-                        <div className="bg-muted rounded h-32 flex items-center justify-center">
-                          <p className="text-muted-foreground text-sm">
-                            [Content preview would appear here]
-                          </p>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -312,29 +338,47 @@ export default function Reports() {
               </div>
 
               <DialogFooter>
-                {selectedReport.status === 'open' || selectedReport.status === 'in-review' ? (
+                {selectedReport.status === ReportStatus.Pending && (
                   <div className="flex space-x-2">
                     <Button 
                       variant="outline"
-                      onClick={() => handleReportAction('dismiss', selectedReport)}
+                      onClick={() => handleReportAction('dismissed', selectedReport)}
                     >
                       <XCircle className="h-4 w-4 mr-1" />
                       Dismiss
                     </Button>
                     <Button 
-                      variant="destructive"
-                      onClick={() => handleReportAction('remove', selectedReport)}
+                      variant="secondary"
+                      onClick={() => handleReportAction('reviewed', selectedReport)}
                     >
-                      Remove Content
+                      Mark as Reviewed
                     </Button>
                     <Button 
-                      onClick={() => handleReportAction('resolve', selectedReport)}
+                      onClick={() => handleReportAction('resolved', selectedReport)}
                     >
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Resolve
                     </Button>
                   </div>
-                ) : (
+                )}
+                {selectedReport.status === ReportStatus.Reviewed && (
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => handleReportAction('dismissed', selectedReport)}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Dismiss
+                    </Button>
+                    <Button 
+                      onClick={() => handleReportAction('resolved', selectedReport)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Resolve
+                    </Button>
+                  </div>
+                )}
+                {(selectedReport.status === ReportStatus.Resolved || selectedReport.status === ReportStatus.Dismissed) && (
                   <Button variant="outline" onClick={() => setSelectedReport(null)}>
                     Close
                   </Button>
@@ -353,15 +397,12 @@ export default function Reports() {
               Confirm {actionDialog.type?.charAt(0).toUpperCase()}{actionDialog.type?.slice(1)} Report
             </DialogTitle>
             <DialogDescription>
-              {actionDialog.type === 'remove' 
-                ? 'This will permanently remove the reported content and may result in seller penalties.'
-                : `Are you sure you want to ${actionDialog.type} this report?`
-              }
+              Are you sure you want to {actionDialog.type} this report?
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Action Notes</label>
+            <label className="text-sm font-medium text-foreground">Action Notes (Optional)</label>
             <Textarea
               placeholder={`Add notes about why you're ${actionDialog.type}ing this report...`}
               value={actionNotes}
@@ -378,7 +419,6 @@ export default function Reports() {
               Cancel
             </Button>
             <Button 
-              variant={actionDialog.type === 'remove' ? 'destructive' : 'default'}
               onClick={confirmAction}
             >
               Confirm {actionDialog.type?.charAt(0).toUpperCase()}{actionDialog.type?.slice(1)}
@@ -392,32 +432,29 @@ export default function Reports() {
 }
 
 interface ReportsTableProps {
-  reports: ContentReport[];
-  onViewReport: (report: ContentReport) => void;
-  onReportAction: (action: 'resolve' | 'dismiss' | 'remove', report: ContentReport) => void;
+  reports: Report[];
+  loading: boolean;
+  onViewReport: (report: Report) => void;
+  onReportAction: (action: 'reviewed' | 'resolved' | 'dismissed', report: Report) => void;
   showActions: boolean;
 }
 
-function ReportsTable({ reports, onViewReport, onReportAction, showActions }: ReportsTableProps) {
-  const getStatusBadge = (status: ContentReport['status']) => {
-    const statusConfig = {
-      open: { variant: "destructive" as const, label: "Open" },
-      'in-review': { variant: "secondary" as const, label: "In Review" },
-      resolved: { variant: "default" as const, label: "Resolved" },
-      dismissed: { variant: "outline" as const, label: "Dismissed" },
-    };
-    
-    const config = statusConfig[status];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+function ReportsTable({ reports, loading, onViewReport, onReportAction, showActions }: ReportsTableProps) {
+  const getStatusBadge = (status: ReportStatus) => {
+    const variant = adminReportsApi.getStatusVariant(status);
+    const label = adminReportsApi.getStatusLabel(status);
+    return <Badge variant={variant}>{label}</Badge>;
   };
 
-  const getContentTypeBadge = (type: ContentReport['reportedContent']['type']) => {
+  if (loading) {
     return (
-      <Badge variant="outline" className="capitalize">
-        {type}
-      </Badge>
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">Loading reports...</p>
+        </CardContent>
+      </Card>
     );
-  };
+  }
 
   return (
     <Card>
@@ -425,11 +462,10 @@ function ReportsTable({ reports, onViewReport, onReportAction, showActions }: Re
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Content</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Reported By</TableHead>
-              <TableHead>Seller</TableHead>
+              <TableHead>Reporter ID</TableHead>
+              <TableHead>Target ID</TableHead>
               <TableHead>Reason</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -438,7 +474,7 @@ function ReportsTable({ reports, onViewReport, onReportAction, showActions }: Re
           <TableBody>
             {reports.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No reports found
                 </TableCell>
               </TableRow>
@@ -446,19 +482,19 @@ function ReportsTable({ reports, onViewReport, onReportAction, showActions }: Re
               reports.map((report) => (
                 <TableRow key={report.id}>
                   <TableCell>
-                    <div>
-                      <p className="font-medium">{report.reportedContent.title}</p>
-                      <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                        {report.reportedContent.description}
-                      </p>
-                    </div>
+                    <span className="font-mono text-sm">{report.reporterId}</span>
                   </TableCell>
-                  <TableCell>{getContentTypeBadge(report.reportedContent.type)}</TableCell>
-                  <TableCell>{report.reportedBy}</TableCell>
-                  <TableCell>{report.seller}</TableCell>
+                  <TableCell>
+                    <span className="font-mono text-sm">{report.targetId}</span>
+                  </TableCell>
                   <TableCell className="max-w-[150px] truncate">{report.reason}</TableCell>
+                  <TableCell>
+                    <p className="text-sm truncate max-w-[200px]" title={report.description}>
+                      {report.description}
+                    </p>
+                  </TableCell>
                   <TableCell>{getStatusBadge(report.status)}</TableCell>
-                  <TableCell>{new Date(report.reportDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
                       <Button
@@ -470,7 +506,7 @@ function ReportsTable({ reports, onViewReport, onReportAction, showActions }: Re
                         Review
                       </Button>
                       
-                      {showActions && (report.status === 'open' || report.status === 'in-review') && (
+                      {showActions && (report.status === ReportStatus.Pending || report.status === ReportStatus.Reviewed) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button size="sm" variant="ghost">
@@ -480,25 +516,27 @@ function ReportsTable({ reports, onViewReport, onReportAction, showActions }: Re
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
+                            {report.status === ReportStatus.Pending && (
+                              <DropdownMenuItem 
+                                onClick={() => onReportAction('reviewed', report)}
+                                className="text-yellow-600"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Mark as Reviewed
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem 
-                              onClick={() => onReportAction('resolve', report)}
+                              onClick={() => onReportAction('resolved', report)}
                               className="text-success"
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Resolve Report
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => onReportAction('dismiss', report)}
+                              onClick={() => onReportAction('dismissed', report)}
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               Dismiss Report
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => onReportAction('remove', report)}
-                              className="text-destructive"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Remove Content
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
