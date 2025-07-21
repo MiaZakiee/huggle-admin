@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 import { Bell, Search, User } from "lucide-react";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { NotificationsModal } from "./NotificationsModal";
+import { mockNotifications } from "@/lib/mock-notifications";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -21,6 +23,8 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { signOut, userEmail, user } = useAdminAuth();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const unreadCount = mockNotifications.filter((n) => !n.isRead).length;
 
   const handleSignOut = async () => {
     await signOut();
@@ -50,15 +54,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
 
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="icon" className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => setNotifOpen(true)}
+                >
                   <Bell className="h-5 w-5" />
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    3
-                  </Badge>
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
                 </Button>
+                <NotificationsModal
+                  open={notifOpen}
+                  onClose={() => setNotifOpen(false)}
+                  notifications={mockNotifications.filter((n) => !n.isRead)}
+                />
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

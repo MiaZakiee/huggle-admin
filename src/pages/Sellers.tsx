@@ -122,8 +122,8 @@ export default function Sellers() {
   const filteredRequests = requests.filter((request) => {
     const matchesSearch =
       searchTerm === "" ||
-      request.sellerId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.id.toLowerCase().includes(searchTerm.toLowerCase());
+      request.store?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.seller?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (statusFilter === "all") return matchesSearch;
     return matchesSearch && request.status === statusFilter;
@@ -274,7 +274,6 @@ export default function Sellers() {
           className="space-y-4"
         >
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
             <TabsTrigger value={Status.Pending.toString()}>
               Pending ({pendingCount})
             </TabsTrigger>
@@ -284,6 +283,7 @@ export default function Sellers() {
             <TabsTrigger value={Status.Rejected.toString()}>
               Rejected ({rejectedCount})
             </TabsTrigger>
+            <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           </TabsList>
 
           <TabsContent
