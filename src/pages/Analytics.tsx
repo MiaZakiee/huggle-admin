@@ -20,12 +20,12 @@ import {
 import { Progress } from "@/components/ui/progress";
 import {
   Users,
-  DollarSign,
+  PhilippinePeso,
   ShoppingCart,
   TrendingUp,
   TrendingDown,
   Store,
-  Download,
+  RefreshCcw,
   Calendar,
   Loader2,
   AlertCircle,
@@ -115,12 +115,7 @@ export default function Analytics() {
 
   // Helper function to format currency
   const formatCurrency = (amount: number) => {
-    if (amount >= 1000000) {
-      return `₱${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `₱${(amount / 1000).toFixed(0)}K`;
-    }
-    return `₱${amount.toFixed(0)}`;
+    return `₱${amount.toFixed(2)}`;
   };
 
   // Helper function to calculate conversion rate
@@ -143,7 +138,7 @@ export default function Analytics() {
       value: formatCurrency(data.timeRangeAnalysis.periodTotals.revenue),
       change: formatTrend(data.timeRangeAnalysis.trends?.revenueTrend).value,
       trend: formatTrend(data.timeRangeAnalysis.trends?.revenueTrend).isPositive ? "up" as const : "down" as const,
-      icon: DollarSign,
+      icon: PhilippinePeso,
       description: `${data.timeRangeAnalysis.timeRange.replace('month', ' month')} period`,
     },
     {
@@ -194,7 +189,7 @@ export default function Analytics() {
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={refetch}>
-              <Download className="h-4 w-4 mr-2" />
+              <RefreshCcw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
           </div>
@@ -289,7 +284,7 @@ export default function Analytics() {
                   <CardDescription>Period over period growth</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {data && data.timeRangeAnalysis.trends && (
+                  {data && data.timeRangeAnalysis.trends ? (
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Views Growth</span>
@@ -330,6 +325,18 @@ export default function Analytics() {
                         }`}>
                           {formatTrend(data.timeRangeAnalysis.trends.storeGrowth).value}
                         </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center space-y-2">
+                        <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto" />
+                        <p className="text-sm text-muted-foreground">
+                          Insufficient data to make comparison
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Growth metrics require historical data for analysis
+                        </p>
                       </div>
                     </div>
                   )}

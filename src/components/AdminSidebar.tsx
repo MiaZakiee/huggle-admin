@@ -47,11 +47,6 @@ const sidebarItems = [
     url: "/analytics",
     icon: BarChart3,
   },
-  {
-    title: "Admin Settings",
-    url: "/settings",
-    icon: Settings,
-  },
 ];
 
 export function AdminSidebar() {
@@ -82,7 +77,7 @@ export function AdminSidebar() {
               <span className="text-primary-foreground font-bold text-sm">H</span>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Huggle</h2>
+              <h2 className="text-lg font-semibold text-primary">Huggle</h2>
               <p className="text-xs text-muted-foreground">Admin Panel</p>
             </div>
           </div>

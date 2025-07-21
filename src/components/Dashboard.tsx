@@ -11,42 +11,99 @@ import {
   TrendingUp,
   Eye,
   Clock,
+  BarChart3,
+  PhilippinePeso,
 } from "lucide-react";
-import { mockDashboardStats, mockSellers, mockReports } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AdminAnalyticsApi } from "@/services/adminAnalyticsApi";
+import { adminUsersApi } from "@/services/adminUsersApi";
+
+interface DashboardStats {
+  totalUsers: number;
+  verifiedSellers: number;
+  totalRevenue: number;
+  pendingSellerApprovals: number;
+}
 
 export function Dashboard() {
-  const stats = mockDashboardStats;
-  const pendingSellers = mockSellers.filter(s => s.status === 'pending');
-  const openReports = mockReports.filter(r => r.status === 'open');
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    verifiedSellers: 0,
+    totalRevenue: 0,
+    pendingSellerApprovals: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch platform analytics for revenue and other stats
+        const [platformData, buyers, sellers] = await Promise.all([
+          AdminAnalyticsApi.getCurrentPlatformAnalytics(),
+          adminUsersApi.getAllBuyers(),
+          adminUsersApi.getAllSellers(),
+        ]);
+
+        // Calculate stats
+        const totalUsers = buyers.length + sellers.length;
+        const verifiedSellers = sellers.filter(seller => seller.type === 'seller').length;
+        const pendingSellerApprovals = 0; // This would need a specific API endpoint for pending sellers
+        
+        setStats({
+          totalUsers,
+          verifiedSellers,
+          totalRevenue: platformData.totalRevenue || 0,
+          pendingSellerApprovals,
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Set fallback data
+        setStats({
+          totalUsers: 0,
+          verifiedSellers: 0,
+          totalRevenue: 0,
+          pendingSellerApprovals: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const statCards = [
     {
-      title: "Active Users",
-      value: stats.activeUsers.toLocaleString(),
+      title: "Total Users",
+      value: loading ? "..." : stats.totalUsers.toLocaleString(),
       icon: Users,
-      description: "+12.5% from last month",
-      trend: "up",
+      description: "Buyers + Sellers",
+      trend: "neutral",
     },
     {
       title: "Verified Sellers",
-      value: stats.verifiedSellers.toLocaleString(),
+      value: loading ? "..." : stats.verifiedSellers.toLocaleString(),
       icon: Store,
-      description: "3 pending approval",
+      description: `${stats.pendingSellerApprovals} pending approval`,
       trend: "neutral",
     },
     {
       title: "Total Revenue",
-      value: `₱${(stats.totalRevenue / 1000).toFixed(0)}K`,
-      icon: DollarSign,
-      description: "+8.2% from last month",
+      value: loading ? "..." : `₱${stats.totalRevenue.toFixed(2)}`,
+      icon: PhilippinePeso,
+      description: "Overall platform revenue",
       trend: "up",
     },
     {
-      title: "Pending Reports",
-      value: stats.pendingReports.toString(),
+      title: "Pending Seller Approvals",
+      value: loading ? "..." : stats.pendingSellerApprovals.toString(),
       icon: AlertTriangle,
-      description: "Requires immediate attention",
-      trend: "down",
+      description: "Requires review",
+      trend: "neutral",
     },
   ];
 
@@ -61,11 +118,7 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            View Reports
-          </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => navigate('/analytics')}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Analytics
           </Button>
@@ -109,82 +162,58 @@ export function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {pendingSellers.length === 0 ? (
+            {stats.pendingSellerApprovals === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 No pending seller applications
               </p>
             ) : (
-              pendingSellers.slice(0, 3).map((seller) => (
-                <div key={seller.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-foreground">{seller.storeName}</h4>
-                    <p className="text-sm text-muted-foreground">{seller.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Submitted {new Date(seller.submissionDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="secondary">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Pending
-                    </Badge>
-                    <Button size="sm" variant="outline">
-                      Review
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-            {pendingSellers.length > 3 && (
-              <Button variant="ghost" className="w-full">
-                View All ({pendingSellers.length})
-              </Button>
+              <div className="text-center py-4">
+                <p className="text-muted-foreground">
+                  {stats.pendingSellerApprovals} sellers awaiting approval
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-2"
+                  onClick={() => navigate('/sellers')}
+                >
+                  Review All
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Recent Reports */}
+        {/* Quick Stats */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5" />
-              <span>Recent Reports</span>
+              <BarChart3 className="h-5 w-5" />
+              <span>Platform Overview</span>
             </CardTitle>
             <CardDescription>
-              Content reports requiring attention
+              Key platform metrics at a glance
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {openReports.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">
-                No open reports
-              </p>
-            ) : (
-              openReports.slice(0, 3).map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-foreground">{report.reportedContent.title}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Reported by {report.reportedBy}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{report.reason}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="destructive">
-                      {report.status}
-                    </Badge>
-                    <Button size="sm" variant="outline">
-                      Review
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-            {openReports.length > 3 && (
-              <Button variant="ghost" className="w-full">
-                View All ({openReports.length})
-              </Button>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Users</span>
+              <span className="font-medium">{stats.totalUsers}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Verified Sellers</span>
+              <span className="font-medium">{stats.verifiedSellers}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Platform Revenue</span>
+              <span className="font-medium">₱{(stats.totalRevenue / 1000).toFixed(0)}K</span>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate('/analytics')}
+            >
+              View Detailed Analytics
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -198,16 +227,36 @@ export function Dashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-20 flex-col">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col"
+              onClick={() => navigate('/analytics')}
+            >
+              <TrendingUp className="h-6 w-6 mb-2" />
+              <span>Analytics</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col"
+              onClick={() => navigate('/sellers')}
+            >
               <Store className="h-6 w-6 mb-2" />
               <span>Review Sellers</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col"
+              onClick={() => navigate('/users')}
+            >
               <Users className="h-6 w-6 mb-2" />
               <span>Manage Users</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col"
+              onClick={() => navigate('/reports')}
+            >
               <AlertTriangle className="h-6 w-6 mb-2" />
               <span>Handle Reports</span>
             </Button>
