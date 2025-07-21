@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 import { Bell, Search, User } from "lucide-react";
@@ -12,10 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { NotificationsModal } from "./NotificationsModal";
-import { mockNotifications } from "@/lib/mock-notifications";
+import { adminNotificationsApi, Notification, NotificationType } from "@/services/adminNotificationsApi";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -23,11 +29,88 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { signOut, userEmail, user } = useAdminAuth();
-  const [notifOpen, setNotifOpen] = useState(false);
-  const unreadCount = mockNotifications.filter((n) => !n.isRead).length;
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchNotifications();
+    // Fetch notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await adminNotificationsApi.getNotifications();
+      setNotifications(response.notifications);
+      setUnreadCount(response.unreadCount);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await adminNotificationsApi.markAsRead(notificationId);
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await adminNotificationsApi.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      toast({
+        title: "Success",
+        description: "All notifications marked as read",
+      });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark all notifications as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getTypeColor = (type: NotificationType) => {
+    const color = adminNotificationsApi.getTypeColor(type);
+    return `bg-${color}-100 text-${color}-800`;
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    
+    return date.toLocaleDateString();
   };
 
   return (
@@ -54,27 +137,89 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
 
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative"
-                  onClick={() => setNotifOpen(true)}
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-                <NotificationsModal
-                  open={notifOpen}
-                  onClose={() => setNotifOpen(false)}
-                  notifications={mockNotifications.filter((n) => !n.isRead)}
-                />
+                <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative">
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                        >
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="end">
+                    <Card className="border-0 shadow-none">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base">Notifications</CardTitle>
+                          {unreadCount > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={handleMarkAllAsRead}
+                              className="text-xs"
+                            >
+                              Mark all read
+                            </Button>
+                          )}
+                        </div>
+                        {unreadCount > 0 && (
+                          <CardDescription>
+                            {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="p-0 max-h-96 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-4 text-center text-muted-foreground">
+                            No notifications
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {notifications.slice(0, 10).map((notification) => (
+                              <div
+                                key={notification.id}
+                                className={`p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 ${
+                                  !notification.isRead ? 'bg-blue-50/50' : ''
+                                }`}
+                                onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
+                              >
+                                <div className="flex items-start justify-between space-x-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-xs ${getTypeColor(notification.type)}`}
+                                      >
+                                        {adminNotificationsApi.getTypeLabel(notification.type)}
+                                      </Badge>
+                                      {!notification.isRead && (
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                      )}
+                                    </div>
+                                    <p className="font-medium text-sm truncate">
+                                      {notification.title}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {notification.message}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {formatRelativeTime(notification.createdAt)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </PopoverContent>
+                </Popover>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

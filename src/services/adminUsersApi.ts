@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   type: 'buyer' | 'seller';
+  createdAt: string;
 }
 
 export interface BanUserRequest {
@@ -47,6 +48,7 @@ export const adminUsersApi = {
         name: buyer.name,
         email: buyer.emailAddress,
         type: 'buyer' as const,
+        createdAt: buyer.createdAt,
       }));
     } catch (error) {
       console.error('Error fetching buyers:', error);
@@ -64,6 +66,7 @@ export const adminUsersApi = {
         name: seller.name,
         email: seller.emailAddress,
         type: 'seller' as const,
+        createdAt: seller.createdAt,
       }));
     } catch (error) {
       console.error('Error fetching sellers:', error);
@@ -86,6 +89,7 @@ export const adminUsersApi = {
         email: buyer.emailAddress,
         type: 'buyer' as const,
         status: 'banned' as const,
+        createdAt: buyer.createdAt,
       }));
       
       const bannedSellersList = bannedSellers.data.map((seller: any) => ({
@@ -94,9 +98,10 @@ export const adminUsersApi = {
         name: seller.name,
         email: seller.emailAddress,
         type: 'seller' as const,
+        createdAt: seller.createdAt,
       }));
       
-      return [...bannedBuyersList, ...bannedSellersList];
+      return [...bannedBuyersList, ...bannedSellersList].sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       console.error('Error fetching banned users:', error);
       return [];
