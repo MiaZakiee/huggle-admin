@@ -205,7 +205,7 @@ export function Dashboard() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Platform Revenue</span>
-              <span className="font-medium">₱{(stats.totalRevenue / 1000).toFixed(0)}K</span>
+              <span className="font-medium">₱{stats.totalRevenue.toFixed(2)}</span>
             </div>
             <Button 
               variant="outline" 
