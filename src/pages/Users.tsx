@@ -353,7 +353,7 @@ function UserTable({ users, onUserAction, showBanAction = false, showUnbanAction
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Email / Phone Number </TableHead>
               <TableHead className="text-center">Type</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>

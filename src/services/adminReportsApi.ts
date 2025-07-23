@@ -76,7 +76,7 @@ export const adminReportsApi = {
   // Update report status
   updateReportStatus: async (reportId: string, status: ReportStatus): Promise<void> => {
     try {
-      await apiClient.put(`/api/reports/${reportId}/status`, status);
+      await apiClient.put(`/api/reports/${reportId}/status`, { status });
     } catch (error) {
       console.error('Error updating report status:', error);
       throw error;

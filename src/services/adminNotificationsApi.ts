@@ -90,6 +90,16 @@ export const adminNotificationsApi = {
     }
   },
 
+  // Delete a specific notification
+  deleteNotification: async (notificationId: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/api/notifications/${notificationId}`);
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      throw error;
+    }
+  },
+
   // Create notification (for testing)
   createNotification: async (request: CreateNotificationRequest): Promise<Notification> => {
     try {
@@ -105,21 +115,21 @@ export const adminNotificationsApi = {
   getTypeLabel: (type: NotificationType): string => {
     switch (type) {
       case NotificationType.NewProduct:
-        return 'New Product';
+        return 'Product';
       case NotificationType.NewPost:
-        return 'New Post';
+        return 'Post';
       case NotificationType.OrderReady:
-        return 'Order Ready';
+        return 'Ready';
       case NotificationType.NewOrder:
-        return 'New Order';
+        return 'Order';
       case NotificationType.OrderCancelled:
         return 'Order Cancelled';
       case NotificationType.NewReport:
-        return 'New Report';
+        return 'Report';
       case NotificationType.NewSeller:
-        return 'New Seller';
+        return 'Seller';
       case NotificationType.NewVerificationRequest:
-        return 'New Verification Request';
+        return 'Verification Request';
       default:
         return 'Unknown';
     }

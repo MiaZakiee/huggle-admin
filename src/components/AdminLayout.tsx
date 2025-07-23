@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { adminNotificationsApi, Notification, NotificationType } from "@/services/adminNotificationsApi";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -33,6 +34,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
@@ -86,6 +88,48 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       toast({
         title: "Error",
         description: "Failed to mark all notifications as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if unread
+    if (!notification.isRead) {
+      await handleMarkAsRead(notification.id);
+    }
+
+    // Navigate to appropriate page for clickable notification types
+    if (notification.type === NotificationType.NewReport) {
+      setNotificationsOpen(false);
+      setTimeout(() => navigate('/reports'), 0);
+    } else if (notification.type === NotificationType.NewVerificationRequest) {
+      setNotificationsOpen(false);
+      setTimeout(() => navigate('/sellers'), 0);
+    }
+  };
+
+  const handleDeleteNotification = async (notificationId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent notification click
+    try {
+      await adminNotificationsApi.deleteNotification(notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      
+      // Update unread count if the deleted notification was unread
+      const deletedNotification = notifications.find(n => n.id === notificationId);
+      if (deletedNotification && !deletedNotification.isRead) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+      
+      toast({
+        title: "Success",
+        description: "Notification deleted",
+      });
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
         variant: "destructive",
       });
     }
@@ -180,40 +224,61 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            {notifications.slice(0, 10).map((notification) => (
-                              <div
-                                key={notification.id}
-                                className={`p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 ${
-                                  !notification.isRead ? 'bg-blue-50/50' : ''
-                                }`}
-                                onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
-                              >
-                                <div className="flex items-start justify-between space-x-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <Badge 
-                                        variant="outline" 
-                                        className={`text-xs ${getTypeColor(notification.type)}`}
-                                      >
-                                        {adminNotificationsApi.getTypeLabel(notification.type)}
-                                      </Badge>
-                                      {!notification.isRead && (
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                      )}
+                            {notifications.slice(0, 10).map((notification) => {
+                              const isClickable = notification.type === NotificationType.NewReport || 
+                                                  notification.type === NotificationType.NewVerificationRequest;
+                              
+                              return (
+                                <div
+                                  key={notification.id}
+                                  className={`p-3 hover:bg-muted/50 border-b last:border-b-0 ${
+                                    !notification.isRead ? 'bg-blue-50/50' : ''
+                                  } ${isClickable ? 'cursor-pointer' : ''}`}
+                                  onClick={() => handleNotificationClick(notification)}
+                                >
+                                  <div className="flex items-start justify-between space-x-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`text-xs ${getTypeColor(notification.type)}`}
+                                        >
+                                          {adminNotificationsApi.getTypeLabel(notification.type)}
+                                        </Badge>
+                                        {!notification.isRead && (
+                                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        )}
+                                        {/* {isClickable && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            New
+                                          </Badge>
+                                        )} */}
+                                      </div>
+                                      <p className="font-medium text-sm truncate">
+                                        {notification.title}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {notification.message}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {formatRelativeTime(notification.createdAt)}
+                                      </p>
                                     </div>
-                                    <p className="font-medium text-sm truncate">
-                                      {notification.title}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {notification.message}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {formatRelativeTime(notification.createdAt)}
-                                    </p>
+                                    
+                                    {/* Delete button */}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600"
+                                      onClick={(e) => handleDeleteNotification(notification.id, e)}
+                                      title="Delete notification"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </CardContent>
@@ -238,10 +303,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                         </p>
                       </div>
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-                    <DropdownMenuItem>Account Preferences</DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive cursor-pointer"
                       onClick={handleSignOut}
