@@ -33,7 +33,7 @@ export const adminReportsApi = {
   getAllReports: async (): Promise<Report[]> => {
     try {
       const response = await apiClient.get('/api/reports');
-      return response.data;
+      return response.data?.reports || response.data;
     } catch (error) {
       console.error('Error fetching all reports:', error);
       throw error;
@@ -76,9 +76,29 @@ export const adminReportsApi = {
   // Update report status
   updateReportStatus: async (reportId: string, status: ReportStatus): Promise<void> => {
     try {
-      await apiClient.put(`/api/reports/${reportId}/status`, { status });
+      await apiClient.put(`/api/reports/${reportId}`, { status });
     } catch (error) {
       console.error('Error updating report status:', error);
+      throw error;
+    }
+  },
+
+  // Suspend the reported target (product/post/store) via report update
+  suspendTarget: async (reportId: string): Promise<void> => {
+    try {
+      await apiClient.put(`/api/reports/${reportId}`, { suspendTarget: true });
+    } catch (error) {
+      console.error('Error suspending target:', error);
+      throw error;
+    }
+  },
+
+  // Unsuspend the reported target
+  unsuspendTarget: async (reportId: string): Promise<void> => {
+    try {
+      await apiClient.put(`/api/reports/${reportId}`, { unsuspendTarget: true });
+    } catch (error) {
+      console.error('Error unsuspending target:', error);
       throw error;
     }
   },

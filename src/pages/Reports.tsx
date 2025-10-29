@@ -348,6 +348,19 @@ export default function Reports() {
                       Dismiss
                     </Button>
                     <Button 
+                      variant="destructive"
+                      onClick={async () => {
+                        try {
+                          await adminReportsApi.suspendTarget(selectedReport.id);
+                          toast({ title: 'Target suspended', description: 'The reported content has been suspended.' });
+                        } catch (e) {
+                          toast({ title: 'Error', description: 'Failed to suspend target.', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      Suspend Target
+                    </Button>
+                    <Button 
                       variant="secondary"
                       onClick={() => handleReportAction('reviewed', selectedReport)}
                     >
@@ -369,6 +382,32 @@ export default function Reports() {
                     >
                       <XCircle className="h-4 w-4 mr-1" />
                       Dismiss
+                    </Button>
+                    <Button 
+                      variant="destructive"
+                      onClick={async () => {
+                        try {
+                          await adminReportsApi.suspendTarget(selectedReport.id);
+                          toast({ title: 'Target suspended', description: 'The reported content has been suspended.' });
+                        } catch (e) {
+                          toast({ title: 'Error', description: 'Failed to suspend target.', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      Suspend Target
+                    </Button>
+                    <Button 
+                      variant="secondary"
+                      onClick={async () => {
+                        try {
+                          await adminReportsApi.unsuspendTarget(selectedReport.id);
+                          toast({ title: 'Target unsuspended', description: 'The reported content has been unsuspended.' });
+                        } catch (e) {
+                          toast({ title: 'Error', description: 'Failed to unsuspend target.', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      Unsuspend Target
                     </Button>
                     <Button 
                       onClick={() => handleReportAction('resolved', selectedReport)}

@@ -60,9 +60,29 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## Deployment (Hosted SPA)
 
-Simply open [Lovable](https://lovable.dev/projects/c798181f-f949-4684-877d-da7c040d20e6) and click on Share -> Publish.
+Environment variables:
+
+```
+VITE_API_BASE_URL=https://your-backend-host
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+```
+
+Build & preview:
+
+```
+npm run build
+npm run preview
+```
+
+Deploy options:
+- Vercel/Netlify: configure env vars above; deploy `dist/`.
+- S3 + CloudFront: upload `dist/` to bucket; set index document to `index.html` and enable SPA routing.
+
+Backend CORS:
+- Allow your SPA origin in backend CORS if not using the default permissive policy.
+- Production tip: restrict origins to your actual domains.
 
 ## Can I connect a custom domain to my Lovable project?
 

@@ -113,7 +113,7 @@ export const AdminAnalyticsApi = {
   // Test API connection
   testConnection: async () => {
     try {
-      const response = await api.get('/api/admin/analytics/platform/current');
+      const response = await api.get('/api/admin/analytics/current');
       return {
         success: true,
         message: 'Connection successful',
@@ -131,10 +131,15 @@ export const AdminAnalyticsApi = {
   // Get platform overview analytics
   async getPlatformOverview(timeRange: TimeRange = '1month'): Promise<PlatformOverviewResponse> {
     try {
-      const response = await api.get('/api/admin/analytics/platform/overview', {
-        params: { timeRange },
-      });
-      return response.data;
+      const snapshotResp = await api.get('/api/admin/platform-overview');
+      const currentResp = await api.get('/api/admin/analytics/current');
+      const months = timeRange === '1year' ? 12 : timeRange === '6months' ? 6 : 1;
+      const summaryResp = await api.get('/api/admin/analytics/summary', { params: { months } });
+      return {
+        snapshot: snapshotResp.data,
+        timeRangeAnalysis: summaryResp.data,
+        topStores: currentResp.data?.topStores ?? [],
+      };
     } catch (error) {
       console.error('Error fetching platform overview:', error);
       throw error;
@@ -144,7 +149,7 @@ export const AdminAnalyticsApi = {
   // Get current platform analytics
   async getCurrentPlatformAnalytics(): Promise<SecurePlatformAnalyticsSummary> {
     try {
-      const response = await api.get('/api/admin/analytics/platform/current');
+      const response = await api.get('/api/admin/analytics/current');
       return response.data;
     } catch (error) {
       console.error('Error fetching current platform analytics:', error);
@@ -155,8 +160,10 @@ export const AdminAnalyticsApi = {
   // Get platform analytics for specific month
   async getPlatformMonthlyAnalytics(monthsAgo: number): Promise<SecurePlatformAnalyticsSummary> {
     try {
-      const response = await api.get(`/api/admin/analytics/platform/monthly/${monthsAgo}`);
-      return response.data;
+      const months = Math.max(1, monthsAgo + 1);
+      const response = await api.get('/api/admin/analytics/summary', { params: { months } });
+      const breakdown = response.data?.monthlyBreakdown || [];
+      return breakdown[Math.min(breakdown.length - 1, monthsAgo)] ?? breakdown[0];
     } catch (error) {
       console.error('Error fetching platform monthly analytics:', error);
       throw error;
@@ -166,7 +173,7 @@ export const AdminAnalyticsApi = {
   // Get platform analytics summary over multiple months
   async getPlatformAnalyticsSummary(monthsCount: number) {
     try {
-      const response = await api.get(`/api/admin/analytics/platform/summary/${monthsCount}`);
+      const response = await api.get('/api/admin/analytics/summary', { params: { months: monthsCount } });
       return response.data;
     } catch (error) {
       console.error('Error fetching platform analytics summary:', error);
@@ -177,14 +184,11 @@ export const AdminAnalyticsApi = {
   // Get top performing stores
   async getTopStores(monthsAgo: number = 0, limit: number = 10, sortBy: string = 'engagementScore'): Promise<SecureStorePerformance[]> {
     try {
-      const response = await api.get('/api/admin/analytics/platform/top-stores', {
-        params: {
-          monthsAgo,
-          topCount: limit,
-          sortBy,
-        },
-      });
-      return response.data.topStores || response.data;
+      const months = Math.max(1, monthsAgo + 1);
+      const response = await api.get('/api/admin/analytics/summary', { params: { months } });
+      const breakdown = response.data?.monthlyBreakdown || [];
+      const pick = breakdown[Math.min(breakdown.length - 1, monthsAgo)] ?? breakdown[0];
+      return (pick?.topStores || []).slice(0, limit);
     } catch (error) {
       console.error('Error fetching top stores:', error);
       return [];
@@ -194,7 +198,7 @@ export const AdminAnalyticsApi = {
   // Get monthly breakdown data (derived from platform analytics)
   getMonthlyBreakdown: async (monthsCount: number = 12): Promise<MonthlyData[]> => {
     try {
-      const response = await api.get(`/api/admin/analytics/platform/summary/${monthsCount}`);
+      const response = await api.get('/api/admin/analytics/summary', { params: { months: monthsCount } });
       const data = response.data;
       
       // Transform the monthly breakdown to match MonthlyData interface
