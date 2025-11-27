@@ -67,9 +67,11 @@ export default function Reports() {
     try {
       setLoading(true);
       const fetchedReports = await adminReportsApi.getAllReports();
-      setReports(fetchedReports);
+      // Ensure reports is always an array
+      setReports(Array.isArray(fetchedReports) ? fetchedReports : []);
     } catch (error) {
       console.error('Error fetching reports:', error);
+      setReports([]); // Set empty array on error
       toast({
         title: "Error",
         description: "Failed to fetch reports. Please try again.",
@@ -80,11 +82,11 @@ export default function Reports() {
     }
   };
 
-  const filteredReports = reports.filter(report =>
-    report.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.reporterId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.targetId.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredReports = (Array.isArray(reports) ? reports : []).filter(report =>
+    report?.reason?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report?.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report?.reporterId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report?.targetId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (status: ReportStatus) => {

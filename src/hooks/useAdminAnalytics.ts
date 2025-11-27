@@ -78,7 +78,7 @@ export function useAdminAnalytics(): UseAdminAnalyticsReturn {
       ] = await Promise.all([
         AdminAnalyticsApi.getPlatformOverview(timeRange),
         AdminAnalyticsApi.getTopStores(0, 10, 'revenue'), // monthsAgo, limit, sortBy
-        AdminAnalyticsApi.getMonthlyBreakdown(12) // Get 12 months of data
+        AdminAnalyticsApi.getMonthlyBreakdown(AdminAnalyticsApi.getMonthsFromTimeRange(timeRange)) // Use selected timeRange
       ]);
 
       console.log('[Admin Analytics Hook] Data fetched successfully:', {

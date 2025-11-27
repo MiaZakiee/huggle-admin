@@ -33,10 +33,36 @@ export const adminReportsApi = {
   getAllReports: async (): Promise<Report[]> => {
     try {
       const response = await apiClient.get('/api/reports');
-      return response.data?.reports || response.data;
+      // Backend returns ApiResponse<T> with structure: { success: boolean, data: T, error?: string }
+      // Axios wraps it in response.data, so we access response.data.data
+      if (response.data?.data) {
+        const result = response.data.data;
+        // Check if result has reports property (PaginatedResult or similar)
+        if (result?.reports && Array.isArray(result.reports)) {
+          return result.reports;
+        }
+        if (result?.items && Array.isArray(result.items)) {
+          return result.items;
+        }
+        // If result is directly an array
+        if (Array.isArray(result)) {
+          return result;
+        }
+      }
+      // Handle legacy response formats
+      if (response.data?.reports && Array.isArray(response.data.reports)) {
+        return response.data.reports;
+      }
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Return empty array if response structure is unexpected
+      console.warn('Unexpected response structure for reports:', response.data);
+      return [];
     } catch (error) {
       console.error('Error fetching all reports:', error);
-      throw error;
+      // Return empty array on error instead of throwing
+      return [];
     }
   },
 

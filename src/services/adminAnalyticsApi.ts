@@ -110,6 +110,24 @@ export const AdminAnalyticsApi = {
   // Get configuration
   getConfig: (): ApiConfig => config,
 
+  // Helper: Convert TimeRange to months count
+  getMonthsFromTimeRange: (timeRange: TimeRange): number => {
+    switch (timeRange) {
+      case '1month':
+        return 1;
+      case '3months':
+        return 3;
+      case '6months':
+        return 6;
+      case '1year':
+        return 12;
+      case 'overall':
+        return 120; // 10 years for "all time" data
+      default:
+        return 1;
+    }
+  },
+
   // Test API connection
   testConnection: async () => {
     try {
@@ -133,7 +151,10 @@ export const AdminAnalyticsApi = {
     try {
       const snapshotResp = await api.get('/api/admin/platform-overview');
       const currentResp = await api.get('/api/admin/analytics/current');
-      const months = timeRange === '1year' ? 12 : timeRange === '6months' ? 6 : 1;
+      
+      // Get months count from timeRange
+      const months = AdminAnalyticsApi.getMonthsFromTimeRange(timeRange);
+      
       const summaryResp = await api.get('/api/admin/analytics/summary', { params: { months } });
       return {
         snapshot: snapshotResp.data,
@@ -196,7 +217,7 @@ export const AdminAnalyticsApi = {
   },
 
   // Get monthly breakdown data (derived from platform analytics)
-  getMonthlyBreakdown: async (monthsCount: number = 12): Promise<MonthlyData[]> => {
+  getMonthlyBreakdown: async (monthsCount: number = 1): Promise<MonthlyData[]> => {
     try {
       const response = await api.get('/api/admin/analytics/summary', { params: { months: monthsCount } });
       const data = response.data;

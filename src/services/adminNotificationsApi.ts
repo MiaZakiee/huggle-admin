@@ -47,10 +47,28 @@ export const adminNotificationsApi = {
           unreadOnly
         }
       });
-      return response.data;
+      // Ensure response has the expected structure
+      if (response.data && typeof response.data === 'object') {
+        return {
+          notifications: Array.isArray(response.data.notifications) ? response.data.notifications : [],
+          totalCount: response.data.totalCount || 0,
+          unreadCount: response.data.unreadCount || 0
+        };
+      }
+      // Return empty response if structure is unexpected
+      return {
+        notifications: [],
+        totalCount: 0,
+        unreadCount: 0
+      };
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      throw error;
+      // Return empty response instead of throwing to prevent crashes
+      return {
+        notifications: [],
+        totalCount: 0,
+        unreadCount: 0
+      };
     }
   },
 

@@ -46,10 +46,19 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const fetchNotifications = async () => {
     try {
       const response = await adminNotificationsApi.getNotifications();
-      setNotifications(response.notifications);
-      setUnreadCount(response.unreadCount);
+      // Ensure we have valid data structure
+      if (response && response.notifications) {
+        setNotifications(Array.isArray(response.notifications) ? response.notifications : []);
+        setUnreadCount(response.unreadCount || 0);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      // Set empty state on error to prevent crashes
+      setNotifications([]);
+      setUnreadCount(0);
     }
   };
 

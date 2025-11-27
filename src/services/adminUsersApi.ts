@@ -37,16 +37,28 @@ export interface DeleteUserRequest {
   confirmDeletion: boolean;
 }
 
+// Buyer response from the API
+interface BuyerResponse {
+  id: string;
+  name: string | null;
+  emailAddress: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedOn: string | null;
+}
+
 export const adminUsersApi = {
-  // Fetch all buyers
+  // Fetch all buyers using the admin endpoint from BuyerController
   getAllBuyers: async (): Promise<User[]> => {
     try {
-      const response = await apiClient.get('/api/buyer/all');
-      return response.data.map((buyer: any) => ({
+      const response = await apiClient.get<BuyerResponse[]>('/api/buyers');
+      // The endpoint returns the array directly (not wrapped in ApiResponse)
+      const buyers = Array.isArray(response.data) ? response.data : [];
+      return buyers.map((buyer) => ({
         id: buyer.id,
         clerkUserId: buyer.id,
-        name: buyer.name,
-        email: buyer.emailAddress,
+        name: buyer.name || '',
+        email: buyer.emailAddress || '',
         type: 'buyer' as const,
         createdAt: buyer.createdAt,
       }));
@@ -59,7 +71,7 @@ export const adminUsersApi = {
   // Fetch all sellers
   getAllSellers: async (): Promise<User[]> => {
     try {
-      const response = await apiClient.get('/api/sellers/all');
+      const response = await apiClient.get('/api/sellers');
       return response.data.map((seller: any) => ({
         id: seller.id,
         clerkUserId: seller.id,
