@@ -16,7 +16,9 @@ export class VerificationService {
     });
 
     // Map the backend DTO structure to the frontend expectation
-    const requests = (response.data?.requests || []).map((dto: any) => ({
+    // Backend returns ApiResponse<T>: { success: boolean, data: { requests: [], totalCount: number } }
+    const resultData = response.data?.data || response.data || {};
+    const requests = (resultData.requests || []).map((dto: any) => ({
       ...dto.verificationRequest,
       seller: dto.seller,
       store: dto.store,
@@ -24,7 +26,7 @@ export class VerificationService {
 
     return {
       requests,
-      totalCount: response.data?.totalCount || 0,
+      totalCount: resultData.totalCount || 0,
     };
   }
 

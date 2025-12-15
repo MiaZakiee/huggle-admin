@@ -57,8 +57,8 @@ export const adminUsersApi = {
       return buyers.map((buyer) => ({
         id: buyer.id,
         clerkUserId: buyer.id,
-        name: buyer.name || '',
-        email: buyer.emailAddress || '',
+        name: buyer.name || 'Unknown Buyer', // Fallback for null name
+        email: buyer.emailAddress || 'No Email', // Fallback for null email
         type: 'buyer' as const,
         createdAt: buyer.createdAt,
       }));
@@ -72,11 +72,13 @@ export const adminUsersApi = {
   getAllSellers: async (): Promise<User[]> => {
     try {
       const response = await apiClient.get('/api/sellers');
-      return response.data.map((seller: any) => ({
+      // Ensure response.data is an array
+      const sellers = Array.isArray(response.data) ? response.data : [];
+      return sellers.map((seller: any) => ({
         id: seller.id,
         clerkUserId: seller.id,
-        name: seller.name,
-        email: seller.emailAddress,
+        name: seller.name || 'Unknown Seller', // Fallback for null name
+        email: seller.emailAddress || 'No Email', // Fallback for null email
         type: 'seller' as const,
         createdAt: seller.createdAt,
       }));
@@ -93,7 +95,7 @@ export const adminUsersApi = {
         apiClient.get('/api/admin/users/banned/buyers'),
         apiClient.get('/api/admin/users/banned/sellers')
       ]);
-      
+
       const bannedBuyersList = bannedBuyers.data.map((buyer: any) => ({
         id: buyer.id,
         clerkUserId: buyer.id,
@@ -103,7 +105,7 @@ export const adminUsersApi = {
         status: 'banned' as const,
         createdAt: buyer.createdAt,
       }));
-      
+
       const bannedSellersList = bannedSellers.data.map((seller: any) => ({
         id: seller.id,
         clerkUserId: seller.id,
@@ -112,7 +114,7 @@ export const adminUsersApi = {
         type: 'seller' as const,
         createdAt: seller.createdAt,
       }));
-      
+
       return [...bannedBuyersList, ...bannedSellersList].sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       console.error('Error fetching banned users:', error);

@@ -66,7 +66,9 @@ export default function Reports() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const fetchedReports = await adminReportsApi.getAllReports();
+      // Fetch a larger batch of reports to ensure client-side filtering works reasonably well
+      // for moderate datasets. Ideal long-term fix is server-side filtering per tab.
+      const fetchedReports = await adminReportsApi.getAllReports({ pageSize: 1000 });
       // Ensure reports is always an array
       setReports(Array.isArray(fetchedReports) ? fetchedReports : []);
     } catch (error) {
@@ -126,10 +128,10 @@ export default function Reports() {
       }
 
       await adminReportsApi.updateReportStatus(actionDialog.report.id, newStatus);
-      
+
       // Update the local state
-      setReports(prev => prev.map(report => 
-        report.id === actionDialog.report?.id 
+      setReports(prev => prev.map(report =>
+        report.id === actionDialog.report?.id
           ? { ...report, status: newStatus }
           : report
       ));
@@ -154,319 +156,319 @@ export default function Reports() {
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Content Moderation</h1>
-          <p className="text-muted-foreground">
-            Review and moderate reported content from users
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge variant="destructive" className="px-3 py-1">
-            {pendingReports.length} Pending Reports
-          </Badge>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search reports by reason, description, reporter, or target..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Content Moderation</h1>
+            <p className="text-muted-foreground">
+              Review and moderate reported content from users
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center space-x-2">
+            <Badge variant="destructive" className="px-3 py-1">
+              {pendingReports.length} Pending Reports
+            </Badge>
+          </div>
+        </div>
 
-      {/* Reports Tabs */}
-      <Tabs defaultValue="pending" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="pending">
-            Pending ({pendingReports.length})
-          </TabsTrigger>
-          <TabsTrigger value="reviewed">
-            Reviewed ({reviewedReports.length})
-          </TabsTrigger>
-          <TabsTrigger value="resolved">
-            Resolved ({resolvedReports.length})
-          </TabsTrigger>
-          <TabsTrigger value="dismissed">
-            Dismissed ({dismissedReports.length})
-          </TabsTrigger>
-          <TabsTrigger value="all">
-            All ({filteredReports.length})
-          </TabsTrigger>
-        </TabsList>
+        {/* Search Bar */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search reports by reason, description, reporter, or target..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="pending">
-          <ReportsTable 
-            reports={pendingReports} 
-            loading={loading}
-            onViewReport={setSelectedReport}
-            onReportAction={handleReportAction}
-            showActions={true}
-          />
-        </TabsContent>
+        {/* Reports Tabs */}
+        <Tabs defaultValue="pending" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="pending">
+              Pending ({pendingReports.length})
+            </TabsTrigger>
+            <TabsTrigger value="reviewed">
+              Reviewed ({reviewedReports.length})
+            </TabsTrigger>
+            <TabsTrigger value="resolved">
+              Resolved ({resolvedReports.length})
+            </TabsTrigger>
+            <TabsTrigger value="dismissed">
+              Dismissed ({dismissedReports.length})
+            </TabsTrigger>
+            <TabsTrigger value="all">
+              All ({filteredReports.length})
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="reviewed">
-          <ReportsTable 
-            reports={reviewedReports} 
-            loading={loading}
-            onViewReport={setSelectedReport}
-            onReportAction={handleReportAction}
-            showActions={true}
-          />
-        </TabsContent>
+          <TabsContent value="pending">
+            <ReportsTable
+              reports={pendingReports}
+              loading={loading}
+              onViewReport={setSelectedReport}
+              onReportAction={handleReportAction}
+              showActions={true}
+            />
+          </TabsContent>
 
-        <TabsContent value="resolved">
-          <ReportsTable 
-            reports={resolvedReports} 
-            loading={loading}
-            onViewReport={setSelectedReport}
-            onReportAction={handleReportAction}
-            showActions={false}
-          />
-        </TabsContent>
+          <TabsContent value="reviewed">
+            <ReportsTable
+              reports={reviewedReports}
+              loading={loading}
+              onViewReport={setSelectedReport}
+              onReportAction={handleReportAction}
+              showActions={true}
+            />
+          </TabsContent>
 
-        <TabsContent value="dismissed">
-          <ReportsTable 
-            reports={dismissedReports} 
-            loading={loading}
-            onViewReport={setSelectedReport}
-            onReportAction={handleReportAction}
-            showActions={false}
-          />
-        </TabsContent>
+          <TabsContent value="resolved">
+            <ReportsTable
+              reports={resolvedReports}
+              loading={loading}
+              onViewReport={setSelectedReport}
+              onReportAction={handleReportAction}
+              showActions={false}
+            />
+          </TabsContent>
 
-        <TabsContent value="all">
-          <ReportsTable 
-            reports={filteredReports} 
-            loading={loading}
-            onViewReport={setSelectedReport}
-            onReportAction={handleReportAction}
-            showActions={false}
-          />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="dismissed">
+            <ReportsTable
+              reports={dismissedReports}
+              loading={loading}
+              onViewReport={setSelectedReport}
+              onReportAction={handleReportAction}
+              showActions={false}
+            />
+          </TabsContent>
 
-      {/* Report Details Dialog */}
-      <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          {selectedReport && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>Report Details</span>
-                  {getStatusBadge(selectedReport.status)}
-                </DialogTitle>
-                <DialogDescription>
-                  Review reported content and take appropriate action
-                </DialogDescription>
-              </DialogHeader>
+          <TabsContent value="all">
+            <ReportsTable
+              reports={filteredReports}
+              loading={loading}
+              onViewReport={setSelectedReport}
+              onReportAction={handleReportAction}
+              showActions={false}
+            />
+          </TabsContent>
+        </Tabs>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Report Information */}
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Report Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Reporter ID</label>
-                        <p className="flex items-center space-x-1">
-                          <User className="h-4 w-4" />
-                          <span className="font-mono text-sm">{selectedReport.reporterId}</span>
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Report Date</label>
-                        <p className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>{new Date(selectedReport.createdAt).toLocaleDateString()}</span>
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Reason</label>
-                        <p className="font-medium">{selectedReport.reason}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Target ID</label>
-                        <p className="flex items-center space-x-1">
-                          <Store className="h-4 w-4" />
-                          <span className="font-mono text-sm">{selectedReport.targetId}</span>
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Status</label>
-                        <div className="mt-1">
-                          {getStatusBadge(selectedReport.status)}
+        {/* Report Details Dialog */}
+        <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            {selectedReport && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center space-x-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span>Report Details</span>
+                    {getStatusBadge(selectedReport.status)}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Review reported content and take appropriate action
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Report Information */}
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Report Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Reporter ID</label>
+                          <p className="flex items-center space-x-1">
+                            <User className="h-4 w-4" />
+                            <span className="font-mono text-sm">{selectedReport.reporterId}</span>
+                          </p>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Report Date</label>
+                          <p className="flex items-center space-x-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>{new Date(selectedReport.createdAt).toLocaleDateString()}</span>
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Reason</label>
+                          <p className="font-medium">{selectedReport.reason}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Target ID</label>
+                          <p className="flex items-center space-x-1">
+                            <Store className="h-4 w-4" />
+                            <span className="font-mono text-sm">{selectedReport.targetId}</span>
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Status</label>
+                          <div className="mt-1">
+                            {getStatusBadge(selectedReport.status)}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Report Description */}
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center space-x-2">
+                          <FileText className="h-5 w-5" />
+                          <span>Report Description</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Description</label>
+                          <p className="text-sm whitespace-pre-wrap">{selectedReport.description}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Report ID</label>
+                          <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                            {selectedReport.id}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
 
-                {/* Report Description */}
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center space-x-2">
-                        <FileText className="h-5 w-5" />
-                        <span>Report Description</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Description</label>
-                        <p className="text-sm whitespace-pre-wrap">{selectedReport.description}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Report ID</label>
-                        <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                          {selectedReport.id}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+                <DialogFooter>
+                  {selectedReport.status === ReportStatus.Pending && (
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleReportAction('dismissed', selectedReport)}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Dismiss
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          try {
+                            await adminReportsApi.suspendTarget(selectedReport.id);
+                            toast({ title: 'Target suspended', description: 'The reported content has been suspended.' });
+                          } catch (e) {
+                            toast({ title: 'Error', description: 'Failed to suspend target.', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        Suspend Target
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleReportAction('reviewed', selectedReport)}
+                      >
+                        Mark as Reviewed
+                      </Button>
+                      <Button
+                        onClick={() => handleReportAction('resolved', selectedReport)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Resolve
+                      </Button>
+                    </div>
+                  )}
+                  {selectedReport.status === ReportStatus.Reviewed && (
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleReportAction('dismissed', selectedReport)}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Dismiss
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          try {
+                            await adminReportsApi.suspendTarget(selectedReport.id);
+                            toast({ title: 'Target suspended', description: 'The reported content has been suspended.' });
+                          } catch (e) {
+                            toast({ title: 'Error', description: 'Failed to suspend target.', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        Suspend Target
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={async () => {
+                          try {
+                            await adminReportsApi.unsuspendTarget(selectedReport.id);
+                            toast({ title: 'Target unsuspended', description: 'The reported content has been unsuspended.' });
+                          } catch (e) {
+                            toast({ title: 'Error', description: 'Failed to unsuspend target.', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        Unsuspend Target
+                      </Button>
+                      <Button
+                        onClick={() => handleReportAction('resolved', selectedReport)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Resolve
+                      </Button>
+                    </div>
+                  )}
+                  {(selectedReport.status === ReportStatus.Resolved || selectedReport.status === ReportStatus.Dismissed) && (
+                    <Button variant="outline" onClick={() => setSelectedReport(null)}>
+                      Close
+                    </Button>
+                  )}
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
 
-              <DialogFooter>
-                {selectedReport.status === ReportStatus.Pending && (
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleReportAction('dismissed', selectedReport)}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Dismiss
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      onClick={async () => {
-                        try {
-                          await adminReportsApi.suspendTarget(selectedReport.id);
-                          toast({ title: 'Target suspended', description: 'The reported content has been suspended.' });
-                        } catch (e) {
-                          toast({ title: 'Error', description: 'Failed to suspend target.', variant: 'destructive' });
-                        }
-                      }}
-                    >
-                      Suspend Target
-                    </Button>
-                    <Button 
-                      variant="secondary"
-                      onClick={() => handleReportAction('reviewed', selectedReport)}
-                    >
-                      Mark as Reviewed
-                    </Button>
-                    <Button 
-                      onClick={() => handleReportAction('resolved', selectedReport)}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Resolve
-                    </Button>
-                  </div>
-                )}
-                {selectedReport.status === ReportStatus.Reviewed && (
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleReportAction('dismissed', selectedReport)}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Dismiss
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      onClick={async () => {
-                        try {
-                          await adminReportsApi.suspendTarget(selectedReport.id);
-                          toast({ title: 'Target suspended', description: 'The reported content has been suspended.' });
-                        } catch (e) {
-                          toast({ title: 'Error', description: 'Failed to suspend target.', variant: 'destructive' });
-                        }
-                      }}
-                    >
-                      Suspend Target
-                    </Button>
-                    <Button 
-                      variant="secondary"
-                      onClick={async () => {
-                        try {
-                          await adminReportsApi.unsuspendTarget(selectedReport.id);
-                          toast({ title: 'Target unsuspended', description: 'The reported content has been unsuspended.' });
-                        } catch (e) {
-                          toast({ title: 'Error', description: 'Failed to unsuspend target.', variant: 'destructive' });
-                        }
-                      }}
-                    >
-                      Unsuspend Target
-                    </Button>
-                    <Button 
-                      onClick={() => handleReportAction('resolved', selectedReport)}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Resolve
-                    </Button>
-                  </div>
-                )}
-                {(selectedReport.status === ReportStatus.Resolved || selectedReport.status === ReportStatus.Dismissed) && (
-                  <Button variant="outline" onClick={() => setSelectedReport(null)}>
-                    Close
-                  </Button>
-                )}
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        {/* Action Confirmation Dialog */}
+        <Dialog open={actionDialog.open} onOpenChange={() => setActionDialog({ open: false, type: null, report: null })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Confirm {actionDialog.type?.charAt(0).toUpperCase()}{actionDialog.type?.slice(1)} Report
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to {actionDialog.type} this report?
+              </DialogDescription>
+            </DialogHeader>
 
-      {/* Action Confirmation Dialog */}
-      <Dialog open={actionDialog.open} onOpenChange={() => setActionDialog({ open: false, type: null, report: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Confirm {actionDialog.type?.charAt(0).toUpperCase()}{actionDialog.type?.slice(1)} Report
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to {actionDialog.type} this report?
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Action Notes (Optional)</label>
-            <Textarea
-              placeholder={`Add notes about why you're ${actionDialog.type}ing this report...`}
-              value={actionNotes}
-              onChange={(e) => setActionNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">Action Notes (Optional)</label>
+              <Textarea
+                placeholder={`Add notes about why you're ${actionDialog.type}ing this report...`}
+                value={actionNotes}
+                onChange={(e) => setActionNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
 
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setActionDialog({ open: false, type: null, report: null })}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={confirmAction}
-            >
-              Confirm {actionDialog.type?.charAt(0).toUpperCase()}{actionDialog.type?.slice(1)}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setActionDialog({ open: false, type: null, report: null })}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmAction}
+              >
+                Confirm {actionDialog.type?.charAt(0).toUpperCase()}{actionDialog.type?.slice(1)}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
@@ -546,7 +548,7 @@ function ReportsTable({ reports, loading, onViewReport, onReportAction, showActi
                         <Eye className="h-4 w-4 mr-1" />
                         Review
                       </Button>
-                      
+
                       {showActions && (report.status === ReportStatus.Pending || report.status === ReportStatus.Reviewed) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -558,7 +560,7 @@ function ReportsTable({ reports, loading, onViewReport, onReportAction, showActi
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {report.status === ReportStatus.Pending && (
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => onReportAction('reviewed', report)}
                                 className="text-yellow-600"
                               >
@@ -566,14 +568,14 @@ function ReportsTable({ reports, loading, onViewReport, onReportAction, showActi
                                 Mark as Reviewed
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onReportAction('resolved', report)}
                               className="text-success"
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Resolve Report
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onReportAction('dismissed', report)}
                             >
                               <XCircle className="h-4 w-4 mr-2" />

@@ -30,9 +30,16 @@ export interface UpdateReportStatusRequest {
 
 export const adminReportsApi = {
   // Get all reports
-  getAllReports: async (): Promise<Report[]> => {
+  getAllReports: async (params?: { page?: number; pageSize?: number; status?: string }): Promise<Report[]> => {
     try {
-      const response = await apiClient.get('/api/reports');
+      const queryParams = {
+        page: params?.page || 1,
+        pageSize: params?.pageSize || 50,
+        status: params?.status,
+      };
+
+      const response = await apiClient.get('/api/reports', { params: queryParams });
+
       // Backend returns ApiResponse<T> with structure: { success: boolean, data: T, error?: string }
       // Axios wraps it in response.data, so we access response.data.data
       if (response.data?.data) {
@@ -48,7 +55,12 @@ export const adminReportsApi = {
         if (Array.isArray(result)) {
           return result;
         }
+        // If result has data property (nested pagination)
+        if (result?.data && Array.isArray(result.data)) {
+          return result.data;
+        }
       }
+
       // Handle legacy response formats
       if (response.data?.reports && Array.isArray(response.data.reports)) {
         return response.data.reports;
@@ -56,12 +68,13 @@ export const adminReportsApi = {
       if (Array.isArray(response.data)) {
         return response.data;
       }
-      // Return empty array if response structure is unexpected
+
       console.warn('Unexpected response structure for reports:', response.data);
       return [];
     } catch (error) {
       console.error('Error fetching all reports:', error);
-      // Return empty array on error instead of throwing
+      // Return empty array on error instead of throwing to prevent UI crash, 
+      // but log it clearly.
       return [];
     }
   },
